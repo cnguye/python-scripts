@@ -14,7 +14,7 @@ bf_api_key = os.getenv("BF_STANDO")
 stocks = {} #dict to stock of the product
 
 # get HTML using request
-url = 'https://rpilocator.com/'
+url = os.getenv("PI_STOCKER")
 req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 webpage = urlopen(req).read()
 
