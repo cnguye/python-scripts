@@ -14,7 +14,7 @@ bf_api_key = os.getenv("BF_STANDO")
 stocks = {} #dict to stock of the product
 
 # get HTML using request
-url = os.getenv("PI_STOCKER")
+url = os.getenv("PI_STOCKER_URL")
 req = Request(url, headers={'User-Agent': 'Mozilla/5.0'})
 webpage = urlopen(req).read()
 
@@ -57,9 +57,6 @@ for row in rows:
         stocks[col_head].append(col_data)
     else:
         stocks[col_head] = [col_data]
-
-selected_skus = ["RPI3-MODAP"]
-
 
 for sku in stocks:
     if sku in selected_skus:
