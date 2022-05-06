@@ -73,7 +73,23 @@ db_currencies = mycursor.fetchall()
 
 # add nonexisting SKUs and Models to DB
 for sku, model in sorted_scraped_pis.items():
-    
+    if(sku not in db_skus):
+        # prepare to add to database
+        sql = "INSERT INTO pi_tim_models (sku, models) VALUES (%s, %s);"
+        adr = (sku, model)
+        mycursor.execute(sql, adr)
+        mydb.commit()
+        print("added ", sku, " ", model, " to the pi_tim_models")
+
+# add nonexisting currencies to DB
+for currency in currency_list:
+    if(currency not in db_currencies):
+        # prepare to add to database
+        sql = "INSERT INTO pi_tim_currencies (currency) VALUES (%s);"
+        adr = (currency,)
+        mycursor.execute(sql, adr)
+        mydb.commit()
+        print("added ", currency, " to the pi_tim_currencies")
 
 # for db_sku in db_skus:
 #     print(db_sku[0])
