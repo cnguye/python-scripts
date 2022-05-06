@@ -70,6 +70,7 @@ db_skus = [ele[0] for ele in db_skus]
 # get list of currencies from database
 mycursor.execute("SELECT currency FROM pi_tim_currencies")
 db_currencies = mycursor.fetchall()
+db_currencies = [ele[0] for ele in db_currencies]
 
 # add nonexisting SKUs and Models to DB
 for sku, model in sorted_scraped_pis.items():
@@ -96,17 +97,3 @@ for currency in currency_list:
 
 # for sku, model in sorted_scraped_pis.items():
 #     print("SKU: ", sku, " MODEL: ", model)
-
-# add all existing currencies
-# for currency in currency_list:
-#     sql = "INSERT INTO pi_tim_currencies (currency) VALUES (%s);"
-#     adr = (currency,)
-#     mycursor.execute(sql, adr)
-#     mydb.commit()
-
-# add all existing skus and models
-# for sku, model in sorted_scraped_pis.items():
-#     sql = "INSERT INTO pi_tim_models (sku, model) VALUES (%s, %s);"
-#     adr = (sku, model)
-#     mycursor.execute(sql, adr)
-#     mydb.commit()
