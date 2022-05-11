@@ -1,6 +1,12 @@
 from urllib.request import Request, urlopen
 from bs4 import BeautifulSoup
+
+import json
+
+# request for telegram  app
 import requests
+# mysql
+import mysql.connector
 
 from dotenv import load_dotenv
 import os
@@ -11,7 +17,26 @@ load_dotenv()
 telegram_chat_key = os.getenv("TELEGRAM_CHAT_KEY")
 bf_api_key = os.getenv("BF_STANDO")
 
-stocks = {} #dict to stock of the product
+# connect to DB
+mydb = mysql.connector.connect(
+    host=os.getenv("DB_LOCALHOST"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASS"),
+    database=os.getenv("DB_MAIN")
+)
+
+# # db query-ing
+mycursor = mydb.cursor()
+
+# variables
+scraped_stock = {} #dict to stock of the product
+
+# get user settings from db
+sql = "SELECT user_settings FROM pi_tim_user_settings WHERE user_id=(%s)"
+adr = (1,)
+mycursor.execute(sql, adr)
+#convert json to list
+user_settings = json.loads(mycursor.fetchone()[0])
 
 # get HTML using request
 url = os.getenv("PI_STOCKER_URL")
@@ -25,7 +50,7 @@ soup = BeautifulSoup(webpage, 'html.parser')
 table = soup.find('table', attrs={'id': 'prodTable'})
 table_body = table.find('tbody')
 
-# get each row
+# get each in-stock row of the table
 rows = table_body.find_all('tr', attrs={'class': 'table-success'})
 
 # insert selected SKUs
@@ -53,23 +78,46 @@ for row in rows:
         'currency': cols[6][1:4]
     }
 
-    if col_head in stocks:
-        stocks[col_head].append(col_data)
+    if col_head in scraped_stock:
+        scraped_stock[col_head].append(col_data)
     else:
-        stocks[col_head] = [col_data]
+        scraped_stock[col_head] = [col_data]
 
-for sku in stocks:
-    if sku in selected_skus:
-        message =   "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(stocks[sku][0]['desc'], len(stocks[sku]))
-        row_message = ""
-        for row in stocks[sku]:
-            temp_message = (
-                "<b>Price:</b> {} ({})\n"
-                "<b>Link:</b> <a href='{}'>{}</a>\n"
-            ).format(row['price'], row['currency'], row['link'], row['vendor'])
-            row_message += temp_message + "\n"
-        message += row_message
-        send_baby_face = requests.get('https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=HTML&text={}'.format(bf_api_key, telegram_chat_key, message))
+message = ""
+
+for user_selected_models in user_settings:
+    if user_selected_models['sku'] in scraped_stock:
+        user_selected_currencies = user_selected_models['currencies']
+        model_info = scraped_stock[user_selected_models['sku']]
+        
+        message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], len(model_info))
+        
+        # write message for ANY currency
+        if user_selected_currencies[0] == "ALL":
+            # begin message
+            row_message = ""
+            for row in model_info:
+                temp_message = (
+                    "<b>Price:</b> {} ({})\n"
+                    "<b>Link:</b> <a href='{}'>{}</a>\n"
+                ).format(row['price'], row['currency'], row['link'], row['vendor'])
+                row_message += temp_message + "\n"
+            message += row_message
+        # write message for selected currencies
+        else:
+            # begin message
+            row_message = ""
+            for row in model_info:
+                if(row['currency'] in user_selected_currencies):
+                    temp_message = (
+                        "<b>Price:</b> {} ({})\n"
+                        "<b>Link:</b> <a href='{}'>{}</a>\n"
+                    ).format(row['price'], row['currency'], row['link'], row['vendor'])
+                    row_message += temp_message + "\n"
+            message += row_message
+
+if message:
+    send_baby_face = requests.get('https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=HTML&text={}'.format(bf_api_key, telegram_chat_key, message))
 
 # {
 # 'RPI3-MODAP': 
