@@ -89,11 +89,14 @@ for user_selected_models in user_settings:
     if user_selected_models['sku'] in scraped_stock:
         user_selected_currencies = user_selected_models['currencies']
         model_info = scraped_stock[user_selected_models['sku']]
-        
-        message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], len(model_info))
-        
+        # get model_info currencies (of available in-stock currencies)
+        model_info_currencies = []
+        for row in model_info:
+            model_info_currencies.append(row['currency'])
+
         # write message for ANY currency
         if user_selected_currencies[0] == "ALL":
+            message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], len(model_info))
             # begin message
             row_message = ""
             for row in model_info:
@@ -104,17 +107,21 @@ for user_selected_models in user_settings:
                 row_message += temp_message + "\n"
             message += row_message
         # write message for selected currencies
-        else:
+        elif any(x in model_info_currencies for x in user_selected_currencies):
+            message += "<b><u>{}</u></b> IS IN STOCK (".format(model_info[0]['desc'])
             # begin message
             row_message = ""
-            for row in model_info:
-                if(row['currency'] in user_selected_currencies):
+            for row_currency in model_info_currencies:
+                if(row_currency in user_selected_currencies):
+                    if(message[-5:-2] != row_currency):
+                        message += "{}, ".format(row_currency)
                     temp_message = (
                         "<b>Price:</b> {} ({})\n"
                         "<b>Link:</b> <a href='{}'>{}</a>\n"
-                    ).format(row['price'], row['currency'], row['link'], row['vendor'])
+                    ).format(row['price'], row_currency, row['link'], row['vendor'])
                     row_message += temp_message + "\n"
-            message += row_message
+            message = message.rstrip(', ')
+            message += ")!\n{}".format(row_message)
 
 if message:
     send_baby_face = requests.get('https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=HTML&text={}'.format(bf_api_key, telegram_chat_key, message))
