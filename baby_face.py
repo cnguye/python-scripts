@@ -84,11 +84,18 @@ for row in rows:
         scraped_stock[col_head] = [col_data]
 
 message = ""
-
-for user_selected_models in user_settings:
-    if user_selected_models['sku'] in scraped_stock:
-        user_selected_currencies = user_selected_models['currencies']
-        model_info = scraped_stock[user_selected_models['sku']]
+for user_selected_model in user_settings['watchlist']:
+    if user_selected_model['sku'] in scraped_stock:
+        notifierBlackList = []
+        for user_blacklist_site in user_settings['blacklist']:
+            for key, scraped_stock_item in scraped_stock.items():
+                scraped_stock_link = scraped_stock_item[0]['link']
+                if user_blacklist_site in scraped_stock_link:
+                    notifierBlackList.append(scraped_stock_link)
+                    break
+        
+        user_selected_currencies = user_selected_model['currencies']
+        model_info = scraped_stock[user_selected_model['sku']]
         # get model_info currencies (of available in-stock currencies)
         model_info_currencies = []
         for row in model_info:
@@ -96,10 +103,12 @@ for user_selected_models in user_settings:
 
         # write message for ANY currency
         if user_selected_currencies[0] == "ALL":
-            message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], len(model_info))
+            message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], (len(model_info) - len(notifierBlackList)))
             # begin message
             row_message = ""
             for row in model_info:
+                if row['link'] in notifierBlackList: # ignore if site is blacklisted
+                    continue
                 temp_message = (
                     "<b>Price:</b> {} ({})\n"
                     "<b>Link:</b> <a href='{}'>{}</a>\n"
@@ -108,20 +117,24 @@ for user_selected_models in user_settings:
             message += row_message
         # write message for selected currencies
         elif any(x in model_info_currencies for x in user_selected_currencies):
-            message += "<b><u>{}</u></b> IS IN STOCK (".format(model_info[0]['desc'])
-            # begin message
-            row_message = ""
-            for row_currency in model_info_currencies:
-                if(row_currency in user_selected_currencies):
-                    if(message[-5:-2] != row_currency):
-                        message += "{}, ".format(row_currency)
+            if (len(model_info_currencies) - len(notifierBlackList)) > 0:
+                message += "<b><u>{}</u></b> IS IN STOCK (".format(model_info[0]['desc'])
+                for model_info_data in model_info:
+                    if model_info_data['link'] in notifierBlackList:
+                        continue
+                    if not model_info_data['currency'] in user_selected_currencies:
+                        continue
+                    # begin message
+                    row_message = ""
+                    if(message[-5:-2] != model_info_data['currency']):
+                        message += "{}, ".format(model_info_data['currency'])
                     temp_message = (
                         "<b>Price:</b> {} ({})\n"
                         "<b>Link:</b> <a href='{}'>{}</a>\n"
-                    ).format(row['price'], row_currency, row['link'], row['vendor'])
+                    ).format(model_info_data['price'], model_info_data['currency'], model_info_data['link'], model_info_data['vendor'])
                     row_message += temp_message + "\n"
-            message = message.rstrip(', ')
-            message += ")!\n{}".format(row_message)
+                    message = message.rstrip(', ')
+                    message += ")!\n{}".format(row_message)
 
 if message:
     send_baby_face = requests.get('https://api.telegram.org/bot{}/sendMessage?chat_id={}&parse_mode=HTML&text={}'.format(bf_api_key, telegram_chat_key, message))
