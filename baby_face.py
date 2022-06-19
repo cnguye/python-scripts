@@ -100,7 +100,6 @@ for user_selected_model in user_settings['watchlist']:
         model_info_currencies = []
         for row in model_info:
             model_info_currencies.append(row['currency'])
-
         # write message for ANY currency
         if user_selected_currencies[0] == "ALL":
             message += "<b><u>{}</u></b> IS IN STOCK ({})!\n".format(model_info[0]['desc'], (len(model_info) - len(notifierBlackList)))
@@ -116,8 +115,10 @@ for user_selected_model in user_settings['watchlist']:
                 row_message += temp_message + "\n"
             message += row_message
         # write message for selected currencies
-        elif any(x in model_info_currencies for x in user_selected_currencies):
-            if (len(model_info_currencies) - len(notifierBlackList)) > 0:
+        else:
+            for model_info_currency in model_info_currencies:
+                if not model_info_currency in user_selected_currencies:
+                    continue
                 message += "<b><u>{}</u></b> IS IN STOCK (".format(model_info[0]['desc'])
                 for model_info_data in model_info:
                     if model_info_data['link'] in notifierBlackList:
